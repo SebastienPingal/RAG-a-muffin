@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.modules.auth.router import router as auth_router
 from app.modules.health.router import router as health_router
+from app.modules.user.router import router as user_router
 from app.core.config import settings
 from app.db import connect_db, disconnect_db
 
@@ -33,3 +34,4 @@ app.add_middleware(
 
 app.include_router(health_router, prefix="/health", tags=["health"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(user_router, prefix="/users", tags=["users"])
