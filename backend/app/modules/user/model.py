@@ -11,3 +11,9 @@ class User(BaseModel):
     googleId: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
+
+class UserCreate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    email: str
+    name: str = None
