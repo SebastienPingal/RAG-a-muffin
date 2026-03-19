@@ -20,4 +20,4 @@ async def get_user(user_id: int):
 
 @router.post("", response_model=User, description="Create user")
 async def create_user(user: UserCreate):
-    return await create(email=user.email, name=user.name)
+    return await create(user=user)

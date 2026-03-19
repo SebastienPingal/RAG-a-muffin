@@ -37,7 +37,7 @@ async def get_or_create_by_google(
 
 
 async def create(user: UserCreate) -> User:
-    user = await db.user.create(data={"email": email, "name": name})
+    user = await db.user.create(data=user.model_dump())
     return User.model_validate(user)
 
 
