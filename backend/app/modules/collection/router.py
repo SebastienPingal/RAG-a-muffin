@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from .model import Collection, CollectionCreate
 from .service import create, get_all, get_by_id
+from app.modules.document.service import upload_document as upload_document_service
 
 router = APIRouter()
 
@@ -11,8 +12,21 @@ async def get_all_collections():
 
 @router.post("", response_model=Collection, description="Create Collection")
 async def create_collection(collection: CollectionCreate):
-    return await create(collection=collection)
+    try:
+        return await create(collection=collection)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 @router.get("/{collection_id}", response_model=Collection, description="Get collection by id")
 async def get_collection_by_id(collection_id: int):
-    return await get_by_id(collection_id=collection_id)
+    try:
+        return await get_by_id(collection_id=collection_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+@router.post("/{collection_id}/document/")
+async def upload_collection_document(collection_id: int, file: UploadFile = File(...)):
+  try:
+    return await upload_document_service(file, collection_id)
+  except ValueError as exc:
+    raise HTTPException(status_code=404, detail=str(exc)) from exc

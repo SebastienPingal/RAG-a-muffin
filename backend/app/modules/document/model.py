@@ -1,22 +1,20 @@
 from datetime import datetime
-from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
-from app.modules.document.model import Document
-
-
-class Collection(BaseModel):
+class Document(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     name: str
-    userId: int
-    documents: Optional[list[Document]] = []
+    content: str
+    collectionId: int
     createdAt: datetime
     updatedAt: datetime
 
-class CollectionCreate(BaseModel):
+
+class DocumentCreate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str
-    userId: int
+    content: str
+    collectionId: int
