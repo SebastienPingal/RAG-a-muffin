@@ -16,7 +16,28 @@ model User {
   email String  @unique
   name  String?
   googleId String? @unique
+  collections Collection[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+model Collection {
+  id    Int     @id @default(autoincrement())
+  name  String
+  userId Int
+  documents Document[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+}
+
+model Document {
+  id    Int     @id @default(autoincrement())
+  name  String
+  collectionId Int
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([collectionId])
+}
