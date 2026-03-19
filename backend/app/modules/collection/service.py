@@ -11,5 +11,15 @@ async def get_by_id(collection_id: int) -> Collection | None:
     return Collection.model_validate(collection) if collection else None
 
 async def create(collection: CollectionCreate) -> Collection:
-    collection = await db.collection.create(data=collection.model_dump())
+    data = collection.model_dump()
+    user = await db.user.find_unique(where={"id": data["userId"]})
+    if user is None:
+        raise ValueError(f"User with id {data['userId']} not found")
+
+    collection = await db.collection.create(
+        data={
+            "name": data["name"],
+            "user": {"connect": {"id": data["userId"]}}
+        }
+    )
     return Collection.model_validate(collection)
