@@ -1,5 +1,5 @@
 from app.db import db
-from app.modules.user.model import User
+from .model import User, UserCreate
 
 
 async def get_all() -> list[User]:
@@ -36,7 +36,7 @@ async def get_or_create_by_google(
     return User.model_validate(user)
 
 
-async def create(*, email: str, name: str | None = None) -> User:
+async def create(user: UserCreate) -> User:
     user = await db.user.create(data={"email": email, "name": name})
     return User.model_validate(user)
 
