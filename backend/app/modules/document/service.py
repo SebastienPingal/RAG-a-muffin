@@ -1,11 +1,16 @@
+import logging
+
 from fastapi import HTTPException, UploadFile
 from prisma.fields import Json
 from starlette.concurrency import run_in_threadpool
 
 from app.db import db
 
+from .embedding import OpenAIEmbeddingProvider, embed_document_chunks, serialize_pgvector
 from .extraction import extract_pdf_content
 from .model import Document
+
+logger = logging.getLogger(__name__)
 
 
 def _serialize_chunk_rows(chunks: list[dict]) -> list[dict]:
@@ -28,6 +33,35 @@ async def extract_content(file: UploadFile) -> dict:
     return await run_in_threadpool(extract_pdf_content, file.file)
 
 
+async def _store_chunk_embeddings(client, document_id: int, chunks: list[dict]) -> None:
+    provider = OpenAIEmbeddingProvider()
+    embedded_chunks = await embed_document_chunks(document_id, chunks, provider)
+
+    for chunk in embedded_chunks:
+        embedding_literal = serialize_pgvector(chunk["embedding"])
+        await client.execute_raw(
+            f"""
+            UPDATE "DocumentChunk"
+            SET "embedding" = '{embedding_literal}'
+            WHERE "documentId" = {document_id} AND "chunkIndex" = {chunk["chunkIndex"]}
+            """,
+        )
+
+
+def _chunk_records_to_embedding_inputs(chunk_records: list[object]) -> list[dict]:
+    return [
+        {
+            "chunkIndex": chunk.chunkIndex,
+            "text": chunk.text,
+            "sectionTitle": getattr(chunk, "sectionTitle", None),
+            "pages": getattr(chunk, "pages", []),
+            "blockRefs": getattr(chunk, "blockRefs", []),
+            "tokenCount": chunk.tokenCount,
+        }
+        for chunk in chunk_records
+    ]
+
+
 async def upload_document(file: UploadFile, collection_id: int) -> Document:
     extracted = None
     if file.content_type == "application/pdf":
@@ -44,12 +78,44 @@ async def upload_document(file: UploadFile, collection_id: int) -> Document:
     if extracted["extractedBlocks"] is not None:
         document_data["extractedBlocks"] = Json(extracted["extractedBlocks"])
 
-    document = await db.document.create(data=document_data)
-
     chunk_rows = _serialize_chunk_rows(extracted["chunks"])
-    if chunk_rows:
-        await db.documentchunk.create_many(
-            data=[{"documentId": document.id, **chunk_row} for chunk_row in chunk_rows]
+    try:
+        async with db.tx() as tx:
+            document = await tx.document.create(data=document_data)
+
+            if chunk_rows:
+                await tx.documentchunk.create_many(
+                    data=[{"documentId": document.id, **chunk_row} for chunk_row in chunk_rows]
+                )
+                await _store_chunk_embeddings(tx, document.id, extracted["chunks"])
+    except Exception as exc:
+        logger.exception(
+            "Document ingestion failed for collection_id=%s filename=%s",
+            collection_id,
+            file.filename,
+        )
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    document = await db.document.find_unique(
+        where={"id": document.id},
+        include={"chunks": True},
+    )
+    return Document.model_validate(document)
+
+
+async def backfill_document_embeddings(document_id: int) -> Document:
+    document = await db.document.find_unique(
+        where={"id": document_id},
+        include={"chunks": True},
+    )
+    if document is None:
+        raise ValueError(f"Document with id {document_id} not found")
+
+    async with db.tx() as tx:
+        await _store_chunk_embeddings(
+            tx,
+            document.id,
+            _chunk_records_to_embedding_inputs(document.chunks),
         )
 
     document = await db.document.find_unique(
@@ -57,3 +123,36 @@ async def upload_document(file: UploadFile, collection_id: int) -> Document:
         include={"chunks": True},
     )
     return Document.model_validate(document)
+
+
+async def get_document_embedding_debug(document_id: int) -> dict:
+    document = await db.document.find_unique(where={"id": document_id})
+    if document is None:
+        raise ValueError(f"Document with id {document_id} not found")
+
+    rows = await db.query_raw(
+        f"""
+        SELECT
+            "id",
+            "chunkIndex",
+            "tokenCount",
+            "sectionTitle",
+            "text",
+            "embedding" IS NOT NULL AS "hasEmbedding"
+        FROM "DocumentChunk"
+        WHERE "documentId" = {document_id}
+        ORDER BY "chunkIndex"
+        """
+    )
+
+    chunk_count = len(rows)
+    embedded_count = sum(1 for row in rows if row["hasEmbedding"])
+
+    return {
+        "documentId": document_id,
+        "documentName": document.name,
+        "chunkCount": chunk_count,
+        "embeddedChunkCount": embedded_count,
+        "allChunksEmbedded": chunk_count > 0 and embedded_count == chunk_count,
+        "chunks": rows,
+    }

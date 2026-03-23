@@ -15,6 +15,7 @@ class DocumentChunk(BaseModel):
     pages: list[int]
     blockRefs: list[dict[str, Any]]
     tokenCount: int
+    embedding: list[float] | None = None
     createdAt: datetime | None = None
     updatedAt: datetime | None = None
 
