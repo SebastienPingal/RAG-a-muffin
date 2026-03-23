@@ -8,7 +8,8 @@ from app.db import db
 
 from .embedding import OpenAIEmbeddingProvider, embed_document_chunks, embed_query, serialize_pgvector
 from .extraction import extract_pdf_content
-from .model import CollectionQueryResponse, Document
+from .generation import answer_with_context
+from .model import CollectionAnswerResponse, CollectionQueryResponse, Document
 
 logger = logging.getLogger(__name__)
 
@@ -198,4 +199,26 @@ async def query_collection_chunks(
         question=question,
         topK=normalized_top_k,
         matches=rows,
+    )
+
+
+async def answer_collection_question(
+    collection_id: int,
+    question: str,
+    top_k: int = 5,
+) -> CollectionAnswerResponse:
+    retrieval = await query_collection_chunks(
+        collection_id=collection_id,
+        question=question,
+        top_k=top_k,
+    )
+    matches_payload = [match.model_dump() for match in retrieval.matches]
+    answer = await answer_with_context(question, matches_payload)
+
+    return CollectionAnswerResponse(
+        collectionId=retrieval.collectionId,
+        question=retrieval.question,
+        topK=retrieval.topK,
+        answer=answer,
+        matches=retrieval.matches,
     )

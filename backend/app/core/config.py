@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_DIMENSIONS: int = 1536
+    OPENAI_CHAT_MODEL: str = "gpt-4.1-mini"
     ENV: str = "dev"
     FRONTEND_ORIGIN: str = "http://localhost:5173"
 

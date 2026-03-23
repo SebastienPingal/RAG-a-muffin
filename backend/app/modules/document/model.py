@@ -65,3 +65,16 @@ class CollectionQueryResponse(BaseModel):
     question: str
     topK: int
     matches: list[CollectionQueryMatch]
+
+
+class CollectionAnswerRequest(BaseModel):
+    question: str
+    topK: int = 5
+
+
+class CollectionAnswerResponse(BaseModel):
+    collectionId: int
+    question: str
+    topK: int
+    answer: str
+    matches: list[CollectionQueryMatch]
