@@ -102,6 +102,8 @@ function App() {
 
   const uploadTargetCollection =
     userCollections.find((collection) => collection.id === uploadTargetCollectionId) ?? null;
+  const selectedCollection =
+    userCollections.find((collection) => collection.id === selectedCollectionId) ?? null;
 
   async function loadCollections(preferredCollectionId?: number) {
     setIsLoadingCollections(true);
@@ -413,15 +415,38 @@ function App() {
         </Card>
 
         <div className="main-column">
-          <Card className="panel ask-panel">
+          <Card className="panel qa-panel">
             <CardHeader>
-              <CardTitle>Ask collection</CardTitle>
+              <CardTitle>Conversation</CardTitle>
               <CardDescription>
-                Query the indexed chunks and inspect the answer with supporting passages.
+                {selectedCollection
+                  ? `Ask questions against "${selectedCollection.name}" and keep the latest answer in view.`
+                  : "Select a collection to ask a question."}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form className="stack" onSubmit={handleAskQuestion}>
+            <CardContent className="qa-panel-content">
+              <div className="qa-answer-area">
+                <div className="answer-heading">
+                  <h3>Latest answer</h3>
+                  {answer ? (
+                    <span className="answer-meta">Top {answer.topK} supporting chunks</span>
+                  ) : null}
+                </div>
+
+                {answer ? (
+                  <div className="answer-body">
+                    <p className="answer-question">{answer.question}</p>
+                    <p>{answer.answer}</p>
+                  </div>
+                ) : (
+                  <div className="empty-state answer-empty-state">
+                    <p>No answer yet.</p>
+                    <span>The latest response will stay here while you continue asking questions.</span>
+                  </div>
+                )}
+              </div>
+
+              <form className="stack ask-form" onSubmit={handleAskQuestion}>
                 <textarea
                   className="question-input"
                   value={question}
@@ -455,27 +480,6 @@ function App() {
       </section>
 
       <section className="results-grid">
-        <Card className="panel answer-panel">
-          <CardHeader>
-            <CardTitle>Answer</CardTitle>
-            <CardDescription>
-              {answer ? `Top ${answer.topK} matches used for the response.` : "No answer yet."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {answer ? (
-              <div className="answer-body">
-                <p>{answer.answer}</p>
-              </div>
-            ) : (
-              <div className="empty-state">
-                <p>Ask a question after uploading a document.</p>
-                <span>The model response will appear here.</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         <Card className="panel sources-panel">
           <CardHeader>
             <CardTitle>Source chunks</CardTitle>

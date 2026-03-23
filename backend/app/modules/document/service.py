@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, UploadFile
 from prisma.fields import Json
@@ -214,11 +215,23 @@ async def answer_collection_question(
     )
     matches_payload = [match.model_dump() for match in retrieval.matches]
     answer = await answer_with_context(question, matches_payload)
-
-    return CollectionAnswerResponse(
+    response = CollectionAnswerResponse(
         collectionId=retrieval.collectionId,
         question=retrieval.question,
         topK=retrieval.topK,
         answer=answer,
         matches=retrieval.matches,
     )
+
+    await db.collection.update(
+        where={"id": collection_id},
+        data={
+            "lastQuestion": response.question,
+            "lastAnswer": response.answer,
+            "lastAnswerTopK": response.topK,
+            "lastAnswerMatches": Json(matches_payload),
+            "lastAnsweredAt": datetime.now(timezone.utc),
+        },
+    )
+
+    return response

@@ -25,6 +25,11 @@ model Collection {
   id    Int     @id @default(autoincrement())
   name  String
   userId Int
+  lastQuestion String? @db.Text
+  lastAnswer String? @db.Text
+  lastAnswerTopK Int?
+  lastAnswerMatches Json?
+  lastAnsweredAt DateTime?
   documents Document[]
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
