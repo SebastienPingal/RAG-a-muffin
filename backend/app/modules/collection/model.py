@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.document.model import Document
 
@@ -11,7 +11,7 @@ class Collection(BaseModel):
     id: int
     name: str
     userId: int
-    documents: Optional[list[Document]] = []
+    documents: Optional[list[Document]] = Field(default_factory=list)
     createdAt: datetime
     updatedAt: datetime
 

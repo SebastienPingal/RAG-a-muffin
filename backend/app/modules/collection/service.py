@@ -1,13 +1,18 @@
 from app.db import db
 from .model import Collection, CollectionCreate
 
+_COLLECTION_INCLUDE = {"documents": {"include": {"chunks": True}}}
+
 
 async def get_all() -> list[Collection]:
-    collections = await db.collection.find_many()
+    collections = await db.collection.find_many(include=_COLLECTION_INCLUDE)
     return [Collection.model_validate(c) for c in collections]
 
 async def get_by_id(collection_id: int) -> Collection | None:
-    collection = await db.collection.find_unique(where={"id": collection_id})
+    collection = await db.collection.find_unique(
+        where={"id": collection_id},
+        include=_COLLECTION_INCLUDE,
+    )
     return Collection.model_validate(collection) if collection else None
 
 async def create(collection: CollectionCreate) -> Collection:
