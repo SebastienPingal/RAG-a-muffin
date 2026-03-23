@@ -41,3 +41,27 @@ class DocumentCreate(BaseModel):
     extractedBlocks: list[dict[str, Any]] | None = None
     chunks: list[DocumentChunk] = Field(default_factory=list)
     collectionId: int
+
+
+class CollectionQueryRequest(BaseModel):
+    question: str
+    topK: int = 5
+
+
+class CollectionQueryMatch(BaseModel):
+    chunkId: int
+    documentId: int
+    documentName: str
+    chunkIndex: int
+    sectionTitle: str | None = None
+    text: str
+    pages: list[int]
+    tokenCount: int
+    distance: float
+
+
+class CollectionQueryResponse(BaseModel):
+    collectionId: int
+    question: str
+    topK: int
+    matches: list[CollectionQueryMatch]

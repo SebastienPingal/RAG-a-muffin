@@ -6,9 +6,9 @@ from starlette.concurrency import run_in_threadpool
 
 from app.db import db
 
-from .embedding import OpenAIEmbeddingProvider, embed_document_chunks, serialize_pgvector
+from .embedding import OpenAIEmbeddingProvider, embed_document_chunks, embed_query, serialize_pgvector
 from .extraction import extract_pdf_content
-from .model import Document
+from .model import CollectionQueryResponse, Document
 
 logger = logging.getLogger(__name__)
 
@@ -156,3 +156,46 @@ async def get_document_embedding_debug(document_id: int) -> dict:
         "allChunksEmbedded": chunk_count > 0 and embedded_count == chunk_count,
         "chunks": rows,
     }
+
+
+async def query_collection_chunks(
+    collection_id: int,
+    question: str,
+    top_k: int = 5,
+) -> CollectionQueryResponse:
+    collection = await db.collection.find_unique(where={"id": collection_id})
+    if collection is None:
+        raise ValueError(f"Collection with id {collection_id} not found")
+
+    normalized_top_k = max(1, min(top_k, 20))
+    provider = OpenAIEmbeddingProvider()
+    query_vector = await embed_query(question, provider)
+    vector_literal = serialize_pgvector(query_vector)
+
+    rows = await db.query_raw(
+        f"""
+        SELECT
+            dc."id" AS "chunkId",
+            dc."documentId",
+            d."name" AS "documentName",
+            dc."chunkIndex",
+            dc."sectionTitle",
+            dc."text",
+            dc."pages",
+            dc."tokenCount",
+            dc."embedding" <=> '{vector_literal}'::vector AS "distance"
+        FROM "DocumentChunk" dc
+        INNER JOIN "Document" d ON d."id" = dc."documentId"
+        WHERE d."collectionId" = {collection_id}
+          AND dc."embedding" IS NOT NULL
+        ORDER BY dc."embedding" <=> '{vector_literal}'::vector
+        LIMIT {normalized_top_k}
+        """
+    )
+
+    return CollectionQueryResponse(
+        collectionId=collection_id,
+        question=question,
+        topK=normalized_top_k,
+        matches=rows,
+    )
