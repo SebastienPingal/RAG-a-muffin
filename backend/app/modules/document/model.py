@@ -1,5 +1,23 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class DocumentChunk(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int | None = None
+    documentId: int | None = None
+    chunkIndex: int
+    text: str
+    sectionTitle: str | None = None
+    pages: list[int]
+    blockRefs: list[dict[str, Any]]
+    tokenCount: int
+    createdAt: datetime | None = None
+    updatedAt: datetime | None = None
+
 
 class Document(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -7,6 +25,8 @@ class Document(BaseModel):
     id: int
     name: str
     content: str
+    extractedBlocks: list[dict[str, Any]] | None = None
+    chunks: list[DocumentChunk] = Field(default_factory=list)
     collectionId: int
     createdAt: datetime
     updatedAt: datetime
@@ -17,4 +37,6 @@ class DocumentCreate(BaseModel):
 
     name: str
     content: str
+    extractedBlocks: list[dict[str, Any]] | None = None
+    chunks: list[DocumentChunk] = Field(default_factory=list)
     collectionId: int

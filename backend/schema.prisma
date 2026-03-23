@@ -36,9 +36,28 @@ model Document {
   id    Int     @id @default(autoincrement())
   name  String
   content String @db.Text
+  extractedBlocks Json?
   collectionId Int
   collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  chunks DocumentChunk[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([collectionId])
+}
+
+model DocumentChunk {
+  id Int @id @default(autoincrement())
+  documentId Int
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  text String @db.Text
+  sectionTitle String?
+  pages Json
+  blockRefs Json
+  tokenCount Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([documentId])
+  @@unique([documentId, chunkIndex])
 }
